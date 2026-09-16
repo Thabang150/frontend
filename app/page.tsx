@@ -22,7 +22,7 @@ import {
   X,
 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://tmtr20-web-tracker.onrender.com/api';
 
 type User = { id: string; name: string; email: string; role: string };
 type Website = { _id: string; name: string; domain: string; url: string; trackingId: string; status: string };
