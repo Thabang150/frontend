@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import {
   ArrowUpRight,
   BarChart3,
-  Check,
   ChevronDown,
   CircleAlert,
+  Check,
+  Copy,
   Globe2,
   Inbox,
   LayoutDashboard,
@@ -216,6 +217,8 @@ function Dashboard({ token, user, onSignOut }: { token: string; user: User; onSi
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [installationWebsite, setInstallationWebsite] = useState<Website | null>(null);
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
   useEffect(() => {
@@ -256,10 +259,38 @@ function Dashboard({ token, user, onSignOut }: { token: string; user: User; onSi
       );
       setWebsites([website, ...websites]);
       setSelected(website);
-      setShowAdd(false);
+      setInstallationWebsite(website);
+      setCopiedSnippet(false);
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : 'Could not add website');
     }
+  }
+
+  const trackerSnippet = installationWebsite
+    ? `import Script from 'next/script';
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          src="https://tmtr20-web-tracker.onrender.com/tracker.js"
+          data-site-id="tmtr_${installationWebsite.trackingId}"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  );
+}`
+    : '';
+
+  async function copySnippet() {
+    if (!trackerSnippet) return;
+    await navigator.clipboard.writeText(trackerSnippet);
+    setCopiedSnippet(true);
   }
 
   async function runAudit() {
@@ -532,30 +563,52 @@ function Dashboard({ token, user, onSignOut }: { token: string; user: User; onSi
               <X size={18} />
             </button>
 
-            <p className="eyebrow">NEW PROPERTY</p>
-            <h2>Add a website</h2>
+            {installationWebsite ? (
+              <>
+                <p className="eyebrow">TRACKING READY</p>
+                <h2>Add tracking to {installationWebsite.name}</h2>
+                <p className="modal-copy">Paste this into that website&apos;s <strong>app/layout.tsx</strong>, then redeploy it.</p>
+                <div className="code-wrap">
+                  <pre><code>{trackerSnippet}</code></pre>
+                  <button className="copy-button" onClick={copySnippet} type="button">
+                    {copiedSnippet ? <Check size={15} /> : <Copy size={15} />}
+                    {copiedSnippet ? 'Copied' : 'Copy snippet'}
+                  </button>
+                </div>
+                <p className="modal-copy">The generated site ID is:</p>
+                <code className="tracking-id">tmtr_{installationWebsite.trackingId}</code>
+                <button className="secondary-button modal-done" onClick={() => { setShowAdd(false); setInstallationWebsite(null); }} type="button">
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow">NEW PROPERTY</p>
+                <h2>Add a website</h2>
 
-            <form onSubmit={addWebsite}>
-              <label>
-                Website name
-                <input name="name" required placeholder="Acme Studio" />
-              </label>
+                <form onSubmit={addWebsite}>
+                  <label>
+                    Website name
+                    <input name="name" required placeholder="Acme Studio" />
+                  </label>
 
-              <label>
-                Website URL
-                <input name="url" type="url" required placeholder="https://example.com" />
-              </label>
+                  <label>
+                    Website URL
+                    <input name="url" type="url" required placeholder="https://example.com" />
+                  </label>
 
-              <label>
-                Timezone
-                <input name="timezone" defaultValue="UTC" required />
-              </label>
+                  <label>
+                    Timezone
+                    <input name="timezone" defaultValue="UTC" required />
+                  </label>
 
-              <button className="primary-button" type="submit">
-                Add website
-                <ArrowUpRight size={17} />
-              </button>
-            </form>
+                  <button className="primary-button" type="submit">
+                    Add website
+                    <ArrowUpRight size={17} />
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

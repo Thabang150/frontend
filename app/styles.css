@@ -441,6 +441,13 @@ input:focus, select:focus {
 }
 .modal h2 { margin: 0; color: var(--white); }
 .modal-close { position: absolute; right: 16px; top: 16px; }
+.modal-copy { color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin: 12px 0 0; }
+.modal-copy strong { color: var(--text-soft); }
+.code-wrap { position: relative; margin-top: 14px; }
+.code-wrap pre { margin: 0; padding: 16px; overflow-x: auto; background: #090909; border: 1px solid var(--line); border-radius: 10px; color: #e6d5aa; font: 0.7rem/1.65 Consolas, 'Courier New', monospace; }
+.copy-button { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 9px 12px; border: 1px solid rgba(217,183,106,0.28); border-radius: 8px; background: var(--gold-soft); color: var(--gold); font-size: 0.75rem; }
+.tracking-id { display: block; margin-top: 8px; padding: 10px 12px; overflow-x: auto; background: rgba(255,255,255,0.04); border: 1px solid var(--line); border-radius: 8px; color: var(--text-soft); font: 0.75rem Consolas, 'Courier New', monospace; }
+.modal-done { margin-top: 18px; }
 .mobile-menu, .mobile-close { display: none; }
 .loading-line {
   display: flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--text-soft); font-size: 0.8rem;
