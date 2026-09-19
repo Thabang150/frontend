@@ -1,9 +1,20 @@
 ﻿'use client';
 
-import { LegacyDashboard } from '../components/legacy-dashboard';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AuthScreen } from '../components/auth-screen';
 import { LoadingState } from '../components/loading-state';
 import { useAuth } from '../components/auth-provider';
+
+function DashboardEntryRedirect() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/websites');
+  }, [router]);
+
+  return <LoadingState message="Opening your workspace..." />;
+}
 
 export default function HomePage() {
   const { status, user } = useAuth();
@@ -13,7 +24,7 @@ export default function HomePage() {
   }
 
   if (status === 'authenticated' && user) {
-    return <LegacyDashboard />;
+    return <DashboardEntryRedirect />;
   }
 
   return <AuthScreen />;
