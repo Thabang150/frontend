@@ -1,5 +1,30 @@
 'use client';
 
+const LAST_ACTIVITY_KEY = 'tmtr20_last_activity';
+export const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
+
+export function markSessionActivity() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+}
+
+export function isSessionTimedOut() {
+  if (typeof window === 'undefined') return false;
+
+  const session = getStoredSession();
+  if (!session.accessToken && !session.refreshToken) {
+    return false;
+  }
+
+  const lastActivity = Number(window.localStorage.getItem(LAST_ACTIVITY_KEY) ?? '0');
+  return Number.isFinite(lastActivity) && Date.now() - lastActivity > SESSION_TIMEOUT_MS;
+}
+
+export function notifySessionExpired() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('tmtr20:session-expired'));
+}
+
 export type ApiErrorDetails = {
   code?: string;
   message?: string;
@@ -69,6 +94,8 @@ export function getStoredSession(): AuthSession {
 export function setStoredSession(tokens: Partial<AuthSession>) {
   if (typeof window === 'undefined') return;
 
+  markSessionActivity();
+
   if (tokens.accessToken !== undefined) {
     if (tokens.accessToken) {
       window.localStorage.setItem(STORAGE_KEYS.accessToken, tokens.accessToken);
@@ -99,6 +126,7 @@ export function clearStoredSession() {
   window.localStorage.removeItem(STORAGE_KEYS.accessToken);
   window.localStorage.removeItem(STORAGE_KEYS.refreshToken);
   window.localStorage.removeItem(STORAGE_KEYS.user);
+  window.localStorage.removeItem(LAST_ACTIVITY_KEY);
 }
 
 async function parseJsonBody(response: Response) {
@@ -117,6 +145,12 @@ let refreshPromise: Promise<string | null> | null = null;
 export async function refreshAccessToken(): Promise<string | null> {
   const currentSession = getStoredSession();
   if (!currentSession.refreshToken) return null;
+
+  if (isSessionTimedOut()) {
+    clearStoredSession();
+    notifySessionExpired();
+    return null;
+  }
 
   if (!refreshPromise) {
     refreshPromise = (async () => {
@@ -145,6 +179,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         return nextAccessToken;
       } catch (error) {
         clearStoredSession();
+        notifySessionExpired();
         throw error instanceof Error ? error : new Error('Session refresh failed');
       } finally {
         refreshPromise = null;
@@ -158,6 +193,12 @@ export async function refreshAccessToken(): Promise<string | null> {
 export async function apiRequest<T>(path: string, options: RequestInit = {}, retry = false): Promise<T> {
   const session = getStoredSession();
   const accessToken = session.accessToken;
+
+  if (isSessionTimedOut()) {
+    clearStoredSession();
+    notifySessionExpired();
+    throw new ApiError(401, 'Your session has expired due to inactivity. Please sign in again.', { code: 'SESSION_EXPIRED' });
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -182,6 +223,11 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, ret
       } catch {
         // The caller handles refresh failure through status/redirect flow.
       }
+    }
+
+    if (response.status === 401) {
+      clearStoredSession();
+      notifySessionExpired();
     }
 
     throw new ApiError(response.status, message, payload);

@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, Globe2, CalendarRange } from 'lucide-react';
+import { Globe2, CalendarRange } from 'lucide-react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from './auth-provider';
 
@@ -51,6 +51,31 @@ const addDays = (date: Date, amount: number) => {
 };
 
 const isoDate = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString().slice(0, 10);
+
+const normalizeDateValue = (value: string | null | undefined) => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const normalizeDateRange = (input: Partial<DateRange>): DateRange => {
+  const fallback = defaultRange();
+  const fromDate = normalizeDateValue(input.from);
+  const toDate = normalizeDateValue(input.to);
+
+  if (!fromDate || !toDate) {
+    return fallback;
+  }
+
+  const start = fromDate.getTime() <= toDate.getTime() ? input.from! : input.to!;
+  const end = fromDate.getTime() <= toDate.getTime() ? input.to! : input.from!;
+
+  return {
+    from: start,
+    to: end,
+    label: input.label ?? 'Custom range',
+  };
+};
 
 const defaultRange = (): DateRange => {
   const end = new Date();
@@ -97,7 +122,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const incomingTo = searchParams.get('endDate') ?? searchParams.get('to');
 
     if (incomingFrom && incomingTo) {
-      setDateRangeState({ from: incomingFrom, to: incomingTo, label: 'Custom range' });
+      setDateRangeState(normalizeDateRange({ from: incomingFrom, to: incomingTo, label: 'Custom range' }));
       return;
     }
 
@@ -106,10 +131,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const setDateRange = useCallback(
     (nextRange: DateRange) => {
-      setDateRangeState(nextRange);
+      const safeRange = normalizeDateRange(nextRange);
+      setDateRangeState(safeRange);
       const params = new URLSearchParams(searchParams.toString());
-      params.set('startDate', nextRange.from);
-      params.set('endDate', nextRange.to);
+      params.set('startDate', safeRange.from);
+      params.set('endDate', safeRange.to);
       const nextUrl = `${pathname}?${params.toString()}`;
       router.replace(nextUrl);
     },
@@ -170,28 +196,28 @@ export function createRangeForPreset(preset: (typeof datePresets)[number]['value
 
   switch (preset) {
     case 'today':
-      return { from: isoDate(end), to: isoDate(end), label: 'Today' };
+      return normalizeDateRange({ from: isoDate(end), to: isoDate(end), label: 'Today' });
     case 'yesterday': {
       const yesterday = addDays(end, -1);
-      return { from: isoDate(yesterday), to: isoDate(yesterday), label: 'Yesterday' };
+      return normalizeDateRange({ from: isoDate(yesterday), to: isoDate(yesterday), label: 'Yesterday' });
     }
     case 'last_7_days': {
       const from = addDays(end, -6);
-      return { from: isoDate(from), to: isoDate(end), label: 'Last 7 days' };
+      return normalizeDateRange({ from: isoDate(from), to: isoDate(end), label: 'Last 7 days' });
     }
     case 'last_30_days': {
       const from = addDays(end, -29);
-      return { from: isoDate(from), to: isoDate(end), label: 'Last 30 days' };
+      return normalizeDateRange({ from: isoDate(from), to: isoDate(end), label: 'Last 30 days' });
     }
     case 'this_month': {
       const from = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
-      return { from: isoDate(from), to: isoDate(end), label: 'This month' };
+      return normalizeDateRange({ from: isoDate(from), to: isoDate(end), label: 'This month' });
     }
     case 'previous_month': {
       const firstOfCurrentMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
       const previousMonthStart = new Date(Date.UTC(firstOfCurrentMonth.getUTCFullYear(), firstOfCurrentMonth.getUTCMonth() - 1, 1));
       const previousMonthEnd = new Date(Date.UTC(firstOfCurrentMonth.getUTCFullYear(), firstOfCurrentMonth.getUTCMonth(), 0));
-      return { from: isoDate(previousMonthStart), to: isoDate(previousMonthEnd), label: 'Previous month' };
+      return normalizeDateRange({ from: isoDate(previousMonthStart), to: isoDate(previousMonthEnd), label: 'Previous month' });
     }
     default:
       return defaultRange();
@@ -219,7 +245,6 @@ export function WebsiteSelector() {
           </option>
         ))}
       </select>
-      <ChevronDown size={15} />
       {websiteError && <span className="toolbar-hint error">{websiteError}</span>}
     </div>
   );
@@ -241,7 +266,10 @@ export function DateRangePicker() {
 
   const applyCustom = () => {
     if (!customFrom || !customTo) return;
-    setDateRange({ from: customFrom, to: customTo, label: 'Custom range' });
+    const nextRange = normalizeDateRange({ from: customFrom, to: customTo, label: 'Custom range' });
+    setCustomFrom(nextRange.from);
+    setCustomTo(nextRange.to);
+    setDateRange(nextRange);
   };
 
   return (

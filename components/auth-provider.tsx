@@ -14,8 +14,10 @@ import {
   clearStoredSession,
   fetchCurrentUser,
   getStoredSession,
+  isSessionTimedOut,
   loginWithEmail,
   logoutCurrentUser,
+  markSessionActivity,
   refreshAccessToken,
   registerWithEmail,
 } from '../lib/api';
@@ -94,8 +96,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshUser();
   }, [refreshUser]);
 
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      clearStoredSession();
+      setUser(null);
+      setAccessToken(null);
+      setStatus('unauthenticated');
+    };
+
+    const handleActivity = () => markSessionActivity();
+    const activityEvents = ['pointerdown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, handleActivity, { passive: true }));
+    window.addEventListener('tmtr20:session-expired', handleSessionExpired);
+
+    const checkInactivity = () => {
+      if (isSessionTimedOut()) {
+        handleSessionExpired();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
+      }
+    };
+
+    const intervalId = window.setInterval(checkInactivity, 60_000);
+    checkInactivity();
+
+    return () => {
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, handleActivity));
+      window.removeEventListener('tmtr20:session-expired', handleSessionExpired);
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   const login = useCallback(async (credentials: { email: string; password: string }) => {
     const payload = await loginWithEmail(credentials);
+    markSessionActivity();
     setUser(payload.user as AuthUser);
     setAccessToken(payload.accessToken);
     setStatus('authenticated');
@@ -103,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (credentials: { name: string; email: string; password: string }) => {
     const payload = await registerWithEmail(credentials);
+    markSessionActivity();
     setUser(payload.user as AuthUser);
     setAccessToken(payload.accessToken);
     setStatus('authenticated');
