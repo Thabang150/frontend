@@ -118,7 +118,7 @@ export default function BehaviorPage() {
     setError(null);
 
     try {
-      const nextData = await apiRequest<BehaviorResponse>(`/websites/${selectedWebsite._id}/behavior?startDate=${dateRange.from}&endDate=${dateRange.to}`);
+      const nextData = await apiRequest<BehaviorResponse>(`/websites/${selectedWebsite._id}/behavior?startDate=${dateRange.from}&endDate=${dateRange.requestTo}`);
       setData(nextData);
     } catch (cause) {
       setError((cause as ApiError)?.message ?? 'The behaviour data could not be loaded.');

@@ -71,7 +71,7 @@ export default function AudiencePage() {
 
     try {
       const response = await apiRequest<AudienceResponse>(
-        `/websites/${selectedWebsite._id}/audience?startDate=${dateRange.from}&endDate=${dateRange.to}`,
+        `/websites/${selectedWebsite._id}/audience?startDate=${dateRange.from}&endDate=${dateRange.requestTo}`,
       );
       setData(response);
     } catch (cause) {

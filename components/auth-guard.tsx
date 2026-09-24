@@ -1,19 +1,20 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from './auth-provider';
 import { LoadingState } from './loading-state';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { status, user } = useAuth();
 
   useEffect(() => {
-    if (status !== 'authenticated' || !user) {
+    if (status !== 'authenticated' && pathname !== '/') {
       router.replace('/');
     }
-  }, [router, status, user]);
+  }, [pathname, router, status]);
 
   if (status === 'loading' || status === 'refreshing') {
     return <LoadingState message="Authenticating workspace access..." />;

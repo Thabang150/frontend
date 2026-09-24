@@ -237,7 +237,7 @@ export default function IntelligencePage() {
     setError(null);
 
     try {
-      const response = await apiRequest<IntelligenceResponse>(`/websites/${selectedWebsite._id}/intelligence?startDate=${dateRange.from}&endDate=${dateRange.to}`);
+      const response = await apiRequest<IntelligenceResponse>(`/websites/${selectedWebsite._id}/intelligence?startDate=${dateRange.from}&endDate=${dateRange.requestTo}`);
       setData(response);
       const nextGroups = response?.insights ?? {};
       const list = [

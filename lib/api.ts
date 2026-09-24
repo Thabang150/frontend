@@ -141,14 +141,21 @@ async function parseJsonBody(response: Response) {
 }
 
 let refreshPromise: Promise<string | null> | null = null;
+let sessionExpiryNotified = false;
+
+function expireStoredSession() {
+  clearStoredSession();
+  if (sessionExpiryNotified) return;
+  sessionExpiryNotified = true;
+  notifySessionExpired();
+}
 
 export async function refreshAccessToken(): Promise<string | null> {
   const currentSession = getStoredSession();
   if (!currentSession.refreshToken) return null;
 
   if (isSessionTimedOut()) {
-    clearStoredSession();
-    notifySessionExpired();
+    expireStoredSession();
     return null;
   }
 
@@ -178,8 +185,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         setStoredSession({ accessToken: nextAccessToken, refreshToken: nextRefreshToken, user: getStoredSession().user });
         return nextAccessToken;
       } catch (error) {
-        clearStoredSession();
-        notifySessionExpired();
+        expireStoredSession();
         throw error instanceof Error ? error : new Error('Session refresh failed');
       } finally {
         refreshPromise = null;
@@ -195,8 +201,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, ret
   const accessToken = session.accessToken;
 
   if (isSessionTimedOut()) {
-    clearStoredSession();
-    notifySessionExpired();
+    expireStoredSession();
     throw new ApiError(401, 'Your session has expired due to inactivity. Please sign in again.', { code: 'SESSION_EXPIRED' });
   }
 
@@ -226,8 +231,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, ret
     }
 
     if (response.status === 401) {
-      clearStoredSession();
-      notifySessionExpired();
+      expireStoredSession();
     }
 
     throw new ApiError(response.status, message, payload);
@@ -243,6 +247,7 @@ export async function loginWithEmail(credentials: { email: string; password: str
   });
 
   setStoredSession({ accessToken: payload.accessToken, refreshToken: payload.refreshToken, user: payload.user });
+  sessionExpiryNotified = false;
   return payload;
 }
 
@@ -253,6 +258,7 @@ export async function registerWithEmail(credentials: { name: string; email: stri
   });
 
   setStoredSession({ accessToken: payload.accessToken, refreshToken: payload.refreshToken, user: payload.user });
+  sessionExpiryNotified = false;
   return payload;
 }
 

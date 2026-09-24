@@ -161,7 +161,7 @@ export default function ConversionsPage() {
     setError(null);
 
     try {
-      const response = await apiRequest<ConversionsResponse>(`/websites/${selectedWebsite._id}/conversions?startDate=${dateRange.from}&endDate=${dateRange.to}`);
+      const response = await apiRequest<ConversionsResponse>(`/websites/${selectedWebsite._id}/conversions?startDate=${dateRange.from}&endDate=${dateRange.requestTo}`);
       setData(response);
     } catch (cause) {
       setError((cause as ApiError)?.message ?? 'The conversion data could not be loaded.');

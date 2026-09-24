@@ -234,7 +234,7 @@ export default function FunnelsPage() {
     setEvaluationError(null);
 
     try {
-      const response = await apiRequest<FunnelEvaluation>(`/websites/${selectedWebsite._id}/conversions?startDate=${dateRange.from}&endDate=${dateRange.to}&funnel=${selectedKey}`);
+      const response = await apiRequest<FunnelEvaluation>(`/websites/${selectedWebsite._id}/conversions?startDate=${dateRange.from}&endDate=${dateRange.requestTo}&funnel=${selectedKey}`);
       setEvaluation(response ?? null);
     } catch (cause) {
       setEvaluationError((cause as ApiError)?.message ?? 'Unable to load funnel evaluation.');

@@ -29,6 +29,7 @@ export type DateRange = {
   from: string;
   to: string;
   label: string;
+  requestTo: string;
 };
 
 type DashboardContextValue = {
@@ -70,18 +71,20 @@ const normalizeDateRange = (input: Partial<DateRange>): DateRange => {
 
   const start = fromDate.getTime() <= toDate.getTime() ? input.from! : input.to!;
   const end = fromDate.getTime() <= toDate.getTime() ? input.to! : input.from!;
+  const requestTo = start === end ? isoDate(addDays(toDate, 1)) : end;
 
   return {
     from: start,
     to: end,
     label: input.label ?? 'Custom range',
+    requestTo,
   };
 };
 
 const defaultRange = (): DateRange => {
   const end = new Date();
   const start = addDays(end, -29);
-  return { from: isoDate(start), to: isoDate(end), label: 'Last 30 days' };
+  return normalizeDateRange({ from: isoDate(start), to: isoDate(end), label: 'Last 30 days' });
 };
 
 const safeWebsiteStatus = (status?: string) => (status ?? '').toLowerCase();

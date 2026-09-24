@@ -69,7 +69,7 @@ export default function AcquisitionPage() {
 
     try {
       const response = await apiRequest<AcquisitionResponse>(
-        `/websites/${selectedWebsite._id}/sources?startDate=${dateRange.from}&endDate=${dateRange.to}`,
+        `/websites/${selectedWebsite._id}/sources?startDate=${dateRange.from}&endDate=${dateRange.requestTo}`,
       );
 
       const nextRows = Array.isArray(response)
