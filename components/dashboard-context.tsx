@@ -55,7 +55,8 @@ const isoDate = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.ge
 const normalizeDateValue = (value: string | null | undefined) => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10) === value ? date : null;
 };
 
 const normalizeDateRange = (input: Partial<DateRange>): DateRange => {
@@ -184,6 +185,7 @@ export function useDashboard() {
 export const datePresets = [
   { label: 'Today', value: 'today' },
   { label: 'Yesterday', value: 'yesterday' },
+  { label: 'This week', value: 'this_week' },
   { label: 'Last 7 days', value: 'last_7_days' },
   { label: 'Last 30 days', value: 'last_30_days' },
   { label: 'This month', value: 'this_month' },
@@ -200,6 +202,11 @@ export function createRangeForPreset(preset: (typeof datePresets)[number]['value
     case 'yesterday': {
       const yesterday = addDays(end, -1);
       return normalizeDateRange({ from: isoDate(yesterday), to: isoDate(yesterday), label: 'Yesterday' });
+    }
+    case 'this_week': {
+      const dayOfWeek = end.getUTCDay();
+      const startOfWeek = addDays(end, dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+      return normalizeDateRange({ from: isoDate(startOfWeek), to: isoDate(end), label: 'This week' });
     }
     case 'last_7_days': {
       const from = addDays(end, -6);
@@ -254,6 +261,8 @@ export function DateRangePicker() {
   const { dateRange, setDateRange } = useDashboard();
   const [customFrom, setCustomFrom] = useState(dateRange.from);
   const [customTo, setCustomTo] = useState(dateRange.to);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
 
   useEffect(() => {
     setCustomFrom(dateRange.from);
@@ -261,14 +270,22 @@ export function DateRangePicker() {
   }, [dateRange]);
 
   const applyPreset = (preset: (typeof datePresets)[number]['value']) => {
+    setCustomError(null);
     setDateRange(createRangeForPreset(preset));
   };
 
   const applyCustom = () => {
-    if (!customFrom || !customTo) return;
+    const fromDate = normalizeDateValue(customFrom);
+    const toDate = normalizeDateValue(customTo);
+    if (!fromDate || !toDate) {
+      setCustomError('Choose valid calendar dates.');
+      return;
+    }
+
     const nextRange = normalizeDateRange({ from: customFrom, to: customTo, label: 'Custom range' });
     setCustomFrom(nextRange.from);
     setCustomTo(nextRange.to);
+    setCustomError(null);
     setDateRange(nextRange);
   };
 
@@ -277,6 +294,7 @@ export function DateRangePicker() {
       <div className="date-range-header">
         <CalendarRange size={15} />
         <span>{dateRange.label}</span>
+        <span className="date-range-values">{dateRange.from} - {dateRange.to}</span>
       </div>
 
       <div className="date-range-presets">
@@ -292,14 +310,26 @@ export function DateRangePicker() {
         ))}
       </div>
 
-      <div className="date-range-custom">
-        <input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} />
-        <span>to</span>
-        <input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} />
-        <button type="button" className="secondary-button compact" onClick={applyCustom}>
-          Apply
-        </button>
-      </div>
+      <button type="button" className="date-range-custom-toggle" onClick={() => setCustomOpen((open) => !open)}>
+        {customOpen ? 'Hide custom dates' : 'Choose custom dates'}
+      </button>
+
+      {customOpen && (
+        <div className="date-range-custom">
+          <label>
+            <span>From</span>
+            <input type="date" value={customFrom} onChange={(event) => setCustomFrom(event.target.value)} />
+          </label>
+          <label>
+            <span>To</span>
+            <input type="date" value={customTo} onChange={(event) => setCustomTo(event.target.value)} />
+          </label>
+          <button type="button" className="secondary-button compact" onClick={applyCustom}>
+            Apply
+          </button>
+          {customError && <span className="toolbar-hint error">{customError}</span>}
+        </div>
+      )}
     </div>
   );
 }

@@ -92,7 +92,7 @@ export function OverviewDashboard() {
 
     try {
       const nextData = await apiRequest<OverviewResponse>(
-        `/websites/${selectedWebsite._id}/overview?startDate=${dateRange.from}&endDate=${dateRange.to}`,
+        `/websites/${selectedWebsite._id}/overview?startDate=${encodeURIComponent(dateRange.from)}&endDate=${encodeURIComponent(dateRange.to)}`,
       );
       setData(nextData);
     } catch (cause) {
